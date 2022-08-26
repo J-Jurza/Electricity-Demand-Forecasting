@@ -1,0 +1,408 @@
+---
+title: "Group Report Visualisation"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+
+```{r Load Packages, include=FALSE}
+library(tidyverse)
+library(reticulate)
+library(lubridate)
+library(reshape2)
+library(glue)
+```
+
+
+# Pre-Processing (do not run this section as it has already been processed - proceed to Visualisation section)
+
+```{python Reading Data in Python}
+# Lets first make some columns - using pandas
+import pandas as pd
+
+# Import dataset into Python
+df_tempTd_pd = pd.read_csv('../data/processed/data_used_to_build_model.csv')
+
+# Converting DATETIME column to datetime64[ns]
+df_tempTd_pd['DATETIME'] = pd.to_datetime(df_tempTd_pd['DATETIME'], format='%Y-%m-%d %H:%M:%S')
+
+# Get info on data
+df_tempTd_pd.info()
+```
+
+```{python Inspecting data}
+# Inspect the data
+df_tempTd_pd.head(5)
+```
+
+
+```{python Adding new features}
+# Create new features
+def create_new_features(df):
+    df["HOUR"] = df["DATETIME"].dt.hour.astype('int8')
+    df["ISO_DAYOFWEEK"] = df["DATETIME"].dt.isocalendar().day.astype('int8')
+    df["MONTH"] = df["DATETIME"].dt.month.astype('int8')
+    df["YEAR"] = df["DATETIME"].dt.year.astype('int16')
+    df["ISO_YEAR"] = df["DATETIME"].dt.isocalendar().year.astype('int16')
+    df["QUARTER"] = df["DATETIME"].dt.quarter.astype('int8')
+    df["DAYOFYEAR"] = df["DATETIME"].dt.dayofyear.astype('int8')
+    df["DAYOFMONTH"] = df["DATETIME"].dt.day.astype('int8')
+    df["ISO_WEEKOFYEAR"] = df["DATETIME"].dt.isocalendar().week.astype('int8')
+    df["SEASON"] = df["DATETIME"].dt.month%12 // 3 + 1 # Season 1 is Summer
+    df["SEASON"] = df["SEASON"].astype('int8')
+    return df
+
+df_tempTd_pd = create_new_features(df_tempTd_pd)
+df_tempTd_pd.info()
+```
+
+
+```{python Inspecting data #2}
+df_tempTd_pd.head()
+```
+
+
+```{python Saving transformed data to new file}
+# Saving data to new file as converting to R changes a few of the datetimes
+#df_tempTd_pd.to_csv('../data/processed/data_used_for_EDA.csv', index=False)
+```
+
+# Visualisations 
+
+```{r Loading new tibble, include=FALSE}
+tempTd_fourStates2 <- read_csv("../data/processed/data_used_for_EDA.csv", 
+                               col_types = cols(
+                                  DATETIME = col_datetime(format = "%Y-%m-%d %H:%M:%S"), 
+                                  REGIONID = col_factor(),
+                                  HOUR = col_factor(), 
+                                  ISO_DAYOFWEEK = col_factor(), 
+                                  MONTH = col_factor(), 
+                                  YEAR = col_factor(), 
+                                  ISO_YEAR = col_factor(), 
+                                  QUARTER = col_factor(), 
+                                  DAYOFYEAR = col_factor(), 
+                                  DAYOFMONTH = col_factor(), 
+                                  ISO_WEEKOFYEAR = col_factor(), 
+                                  SEASON = col_factor()
+                                  )
+                              )
+
+df_mvs <- read_csv('../data/processed/data_used_for_EDA_missing_values.csv')
+``` 
+
+
+```{r Inspecting new tibble}
+tempTd_fourStates2
+df_mvs
+```
+
+# Visualisation 1 - Pre/Post-Resample
+
+```{r}
+df_mvs %>%
+  mutate(variable = as.factor(case_when(variable == 'num_missing_pre' ~ 'pre-resample',
+                                        variable == 'num_missing_post' ~ 'post-resample'))) %>%
+  ggplot(aes(x=fct_reorder(REGIONID, desc(value)), y=value, 
+             fill=fct_reorder(variable, desc(value)))) +
+  geom_bar(position="dodge", stat="identity") +
+  geom_text(aes(label=value), vjust = -0.2, position = position_dodge(0.9)) +
+  labs(x='Region',
+       y='Number of Missing Values',
+       title='Missing Temperature Observations Pre and Post Resample') +
+  guides(fill=guide_legend("Pre/Post Resample")) + # Sets legend title
+  theme(plot.title = element_text(hjust=0.5)) +
+  scale_fill_manual(values = c("pre-resample"="#00BFC4",
+                               "post-resample"="#F8766D"))
+
+#ggsave('GroupReportTemplate/EDA/fourStates_tempDataset_prePostResample.png')
+```
+
+
+# Visualisation 2 - Temperature vs Electricity Consumption for each Region
+
+```{r Scatterplot of Temperature vs Demand}
+tempTd_fourStates2 %>% 
+  ggplot(aes(x=TEMPERATURE, y=TOTALDEMAND, color=REGIONID)) +
+  geom_point() +
+  facet_wrap(~REGIONID, nrow=2, ncol=2) +
+  labs(x='Temperature (°C)',
+       y='Electricity Consumption (MW)',
+       title='Temperature vs Electricity Consumption per Region') +
+  guides(color=guide_legend("Region")) + # Sets legend title
+  theme(plot.title = element_text(hjust=0.5))
+
+#ggsave('GroupReportTemplate/EDA/fourStates_td_vs_temp_scatterplot.png')
+```
+
+
+# Visualisation 3 - Heatmap of Bin Counts for each Region
+
+```{r}
+tempTd_fourStates2 %>% 
+  ggplot(aes(x=TEMPERATURE, y=TOTALDEMAND)) +
+  geom_bin_2d(bins=30) +
+  scale_fill_viridis_c() +
+  facet_wrap(~REGIONID, nrow=2, ncol=2) +
+  labs(x='Temperature (°C)',
+       y='Electricity Consumption (MW)',
+       title='Heatmap of Bin Counts for each Region') +
+  guides(guide_legend(title="Count")) + # Sets legend title
+  theme(plot.title = element_text(hjust=0.5))
+
+#ggsave('GroupReportTemplate/EDA/fourStates_td_vs_temp_HeatmapBinCounts.png')
+```
+
+
+# Visualisation 4 - Temperature vs Electricity Cosumption per Season for each Region 
+
+```{r Scatterplot of Temperature vs Demand by Region and Season}
+tempTd_fourStates2 %>% 
+  mutate(SEASON = case_when(SEASON == 1 ~ 'Summer',
+                            SEASON == 2 ~ 'Autumn',
+                            SEASON == 3 ~ 'Winter',
+                            SEASON == 4 ~ 'Spring')) %>% 
+  mutate(SEASON = fct_relevel(SEASON, c('Summer', 'Autumn', 'Winter', 'Spring'))) %>% 
+  ggplot(aes(x=TEMPERATURE, y=TOTALDEMAND, color=REGIONID)) +
+  geom_point() +
+  facet_grid(rows=vars(REGIONID), cols=vars(SEASON)) +
+  labs(x='Temperature (°C)',
+       y='Electricity Consumption (MW)',
+       title='Temperature vs Electricity Consumption per Season and Region') +
+  guides(color=guide_legend("Region")) + # Sets legend title
+  theme(plot.title = element_text(hjust=0.5))
+
+#ggsave('GroupReportTemplate/EDA/fourStates_td_vs_temp_SeasonScatterplot.png')
+```
+
+
+# Visualisation 5 - Boxplot of Electricity Consumption per Region
+
+```{r Boxplot of Total Demand per Region}
+tempTd_fourStates2 %>% 
+  ggplot(aes(x=REGIONID, y=TOTALDEMAND, fill=REGIONID)) +
+  stat_boxplot(geom='errorbar', width=0.25) +
+  geom_boxplot() +
+  labs(x='Region',
+       y='Electricity Consumption (MW)',
+       title='Boxplot of Electricity Consumption per Region') +
+  guides(fill=guide_legend("Region")) + # Sets legend title
+  theme(plot.title = element_text(hjust=0.5))
+
+#ggsave('GroupReportTemplate/EDA/fourStates_td_Boxplot.png')
+```
+
+
+# Visualisation 6 - Boxplot of Temperature per Region
+
+```{r Boxplot of Temperatures per Region}
+tempTd_fourStates2 %>% 
+  ggplot(aes(x=REGIONID, y=TEMPERATURE, fill=REGIONID)) +
+  stat_boxplot(geom='errorbar', width=0.25) +
+  geom_boxplot() +
+  labs(x='Region',
+       y='Temperature (°C)',
+       title='Boxplot of Temperature per Region') +
+  guides(fill=guide_legend("Region")) + # Sets legend title
+  theme(plot.title = element_text(hjust=0.5))
+
+#ggsave('GroupReportTemplate/EDA/fourStates_temp_Boxplot.png')
+```
+
+
+# Visualisation 7 - Hourly Electricity Consumption per Region
+
+```{r Bar Chart of Average Total Demand per Hour per region}
+tempTd_fourStates2 %>% 
+  group_by(REGIONID, HOUR) %>% 
+  summarise(AVERAGE=mean(TOTALDEMAND)) %>% 
+  ggplot(aes(x=HOUR, y=AVERAGE, fill=REGIONID)) +
+  geom_col() +
+  facet_grid(rows=vars(REGIONID), scales='free') +
+  labs(title='Hourly Electricity Consumption per Region',
+       x='Hour',
+       y='Electricity Consumption (MW)') +
+  guides(fill=guide_legend("Region")) + # Sets legend title
+  theme(plot.title = element_text(hjust=0.5))
+
+#ggsave('GroupReportTemplate/EDA/fourStates_hour_BarChart.png')
+```
+
+
+# Visualisation 8 - Seasonal average Electricity Consumption per Region
+
+```{r Bar Chart of DOW vs Average Elec Consump by Region and Season}
+tempTd_fourStates2 %>% 
+  mutate_at('ISO_DAYOFWEEK', ~fct_relevel(., sort(levels(.)))) %>%
+  group_by(REGIONID, SEASON, ISO_DAYOFWEEK) %>% 
+  summarise(AVERAGE=mean(TOTALDEMAND)) %>% 
+  mutate(SEASON = as.factor(case_when(SEASON == 1 ~ 'Summer',
+                                      SEASON == 2 ~ 'Autumn',
+                                      SEASON == 3 ~ 'Winter',
+                                      SEASON == 4 ~ 'Spring'))) %>% 
+  ggplot(aes(x=ISO_DAYOFWEEK, y=AVERAGE, fill=REGIONID)) +
+  geom_col() +
+  facet_grid(cols=vars(SEASON), rows=vars(REGIONID), scales='free') +
+  labs(title='Seasonal Average Electricity Consumption per Region',
+       x='Day of Week',
+       y='Average Electricity Consumption (MW)') +
+  guides(fill=guide_legend("Region")) + # Sets legend title
+  theme(plot.title = element_text(hjust=0.5))
+
+#ggsave('GroupReportTemplate/EDA/fourStates_seasonElecConsumpDOW_barPlot.png')
+```
+
+
+# Visualisation 9 - Density Plots of Electricity Consumption for each Region
+
+```{r}
+tempTd_fourStates2 %>% 
+  rename(Region = REGIONID) %>% 
+  ggplot(aes(x=TOTALDEMAND, color=Region, fill=Region)) +
+  geom_density(alpha=0.4) +
+  geom_histogram(aes(y=..density..), alpha=0.4, position="identity", binwidth=200)+
+  ggtitle('Density Plot of Electricity Consumption per Region') +
+  labs(x='Electricity Consumption (MW)',
+       y='Density') +
+  theme(plot.title = element_text(hjust=0.5))
+
+#ggsave('GroupReportTemplate/EDA/fourStates_ElecConsump_densityPlot.png')
+```
+
+
+# Visualisation 10 - Christmas Day Temperature - Years 2016-2020
+
+```{r}
+# Line plot of temperatures for every Christmas
+tempTd_fourStates2 %>%
+  mutate(HOUR_MINUTE = as.factor(format(tempTd_fourStates2$DATETIME, '%H:%M'))) %>% 
+  filter(as.numeric(MONTH) == 12,
+         as.numeric(DAYOFMONTH) == 25,
+         YEAR %in% c(2016, 2017, 2018, 2019, 2020)) %>% 
+  ggplot(aes(x=HOUR_MINUTE, y=TEMPERATURE, group=YEAR, color=YEAR)) +
+  geom_line() +
+  facet_grid(rows=vars(REGIONID), scales='free') +
+  theme(plot.title = element_text(hjust=0.5)) +
+  guides(color=guide_legend("Year")) +
+  scale_x_discrete(breaks = c("00:00", "01:00", "02:00", "03:00", "04:00",
+                              "05:00", "06:00", "07:00", "08:00", "09:00",
+                              "10:00", "11:00", "12:00", "13:00", "14:00",
+                              "15:00", "16:00", "17:00", "18:00", "19:00",
+                              "20:00", "21:00", "22:00", "23:00"),
+                   labels = c("0", "1", "2", "3", "4", "5",
+                              "6", "7", "8", "9", "10", "11",
+                              "12", "13", "14", "15", "16", "17",
+                              "18", "19", "20", "21", "22", "23")) +
+  scale_y_continuous(breaks = c(15, 20, 25, 30, 35)) +
+  labs(x='Time (Hours)',
+       y='Temperature (°C)',
+       title='Christmas Temperature - Year 2016-2020')
+
+#ggsave('GroupReportTemplate/EDA/fourStates_xmasTemp_LinePLot.png')
+```
+
+
+# Visualisation 11 - Christmas Day Electricity Consumption - Years 2016-2020
+
+```{r}
+# Line plot of temperatures for every Christmas
+tempTd_fourStates2 %>%
+  mutate(HOUR_MINUTE = as.factor(format(tempTd_fourStates2$DATETIME, '%H:%M'))) %>% 
+  filter(as.numeric(MONTH) == 12,
+         as.numeric(DAYOFMONTH) == 25,
+         YEAR %in% c(2016, 2017, 2018, 2019, 2020)) %>% 
+  ggplot(aes(x=HOUR_MINUTE, y=TOTALDEMAND, group=YEAR, color=YEAR)) +
+  geom_line() +
+  facet_grid(rows=vars(REGIONID), scales='free') +
+  theme(plot.title = element_text(hjust=0.5)) +
+  guides(color=guide_legend("Year")) +
+  scale_x_discrete(breaks = c("00:00", "01:00", "02:00", "03:00", "04:00",
+                              "05:00", "06:00", "07:00", "08:00", "09:00",
+                              "10:00", "11:00", "12:00", "13:00", "14:00",
+                              "15:00", "16:00", "17:00", "18:00", "19:00",
+                              "20:00", "21:00", "22:00", "23:00"),
+                   labels = c("0", "1", "2", "3", "4", "5",
+                              "6", "7", "8", "9", "10", "11",
+                              "12", "13", "14", "15", "16", "17",
+                              "18", "19", "20", "21", "22", "23")) +
+  #scale_y_continuous(breaks = c(15, 20, 25, 30, 35)) +
+  labs(x='Time (Hours)',
+       y='Electricity Consumption (MW)',
+       title='Christmas Electricity Consumption - Year 2016-2020')
+
+#ggsave('GroupReportTemplate/EDA/fourStates_xmasElecCons_LinePLot.png')
+```
+
+
+# Visualisation 12 - Heatmap of Correlations for QLD
+
+```{r Correlation plot between features from one Region (QLD)}
+heatmap_plot <- function(df, region) {
+  correlations <- df %>% 
+    filter(REGIONID == {{region}}) %>% 
+    select(-c('DATETIME', 'REGIONID')) %>%
+    mutate(across(everything(.), as.numeric)) %>% 
+    cor(.)
+  
+  correlations[lower.tri(correlations)] <- NA
+  
+  correlations[,nrow(correlations):1] %>% 
+    melt(., na.rm=TRUE) %>% 
+    mutate(across(value, ~round(., 2))) %>% 
+    ggplot(aes(x=Var1, y=Var2, fill=value)) +
+    geom_tile(color='white') +
+    geom_text(aes(label=value), color='white', size=3) +
+    theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1),
+          axis.title.x = element_blank(),
+          axis.title.y = element_blank(),
+          panel.background = element_blank(),
+          plot.title = element_text(hjust=0.5)) +
+    scale_fill_continuous(type="gradient", limit=c(-1,1)) +
+    labs(title=glue('Heatmap of Correlations for {region}'))
+}
+
+heatmap_plot(tempTd_fourStates2, 'QLD')
+#ggsave('GroupReportTemplate/EDA/QLD_correlation_plot.png')
+#heatmap_plot(tempTd_fourStates2, 'VIC')
+#heatmap_plot(tempTd_fourStates2, 'NSW')
+#heatmap_plot(tempTd_fourStates2, 'SA')
+```
+
+
+# Visualisation 13 - 3-Fold Nested CV
+
+```{r}
+tibble(
+  CV_Fold = c('1', '1', '1', '1', '1',
+              '2', '2', '2', '2', '2',
+              '3', '3', '3', '3', '3'),
+  Set = fct_reorder(c("train", "train", "validation", "test", "no data",
+                      "train", "train", "validation", "test", "no data",
+                      "train", "train", "validation", "test", "no data"), 
+                    c(1903, 1096, 731, 366, 0,
+                      1903, 1096, 731, 366, 0,
+                      1903, 1096, 731, 366, 0)),
+  DaysInYear = c(0, 366, 365, 365, 807,
+                 0, 731, 365, 365, 442,
+                 0, 1096, 365, 442, 0)
+) %>% 
+  ggplot(aes(x=CV_Fold, y=DaysInYear, fill=Set)) +
+  geom_col(width=0.6) +
+  coord_flip() +
+  scale_y_continuous(breaks = c(0, 366, 731, 1096, 1461, 1903),
+                     labels = c("2016-01-01", "2017-01-01", "2018-01-01",
+                                "2019-01-01", "2020-01-01", "2021-03-18")) +
+  scale_fill_manual(values = c("train"="#F8766D",
+                               "validation"="#7CAE00",
+                               "test"="#00BFC4",
+                               "no data"="grey")) +
+  scale_x_discrete(limits=rev) +
+  labs(x='CV Fold',
+       y='Date',
+       title='3-Fold Nested Cross Validation') +
+  theme(plot.title = element_text(hjust=0.5))
+
+#ggsave('GroupReportTemplate/EDA/3fold_nested_cv.png')
+```
+
