@@ -6,7 +6,7 @@ Every day, electricity is consumed by individuals, households, and businesses ar
 
 ## Project Status
 
-This project is a capstone project for a Master of Data Science degree, signifying its importance in applying theoretical knowledge to solve real-world problems. The project is currently in the analysis phase, with ongoing efforts to refine the models and techniques used.
+This project is a group capstone project for a UNSW Master of Data Science degree, signifying its importance in applying theoretical knowledge to solve real-world problems. The project was delivered with an industry-based final report outlining findings and suggestions for further research.
 
 ## Methodology
 
@@ -24,7 +24,7 @@ We explore several machine learning models including LSTM, ARIMA, Random Forest,
 
 ### Model Evaluation
 
-Models are evaluated based on their RMSE accuracy on both training and testing sets. The best-performing model will be determined by the lowest RMSE on the test set.
+Models are evaluated based on their RMSE accuracy on both training and testing sets. The lowest RMSE on the test set determines the best-performing model.
 
 ## Dependencies
 
