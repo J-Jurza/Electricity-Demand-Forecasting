@@ -1,4 +1,4 @@
-# Electricity Demand Forecasting
+# Electricity Demand Forecasting with Machine Learning and Time-Series Analysis Methods
 
 ## Introduction
 
