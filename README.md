@@ -1,21 +1,3 @@
-# Electricity Demand Forecasting
-
-## Introduction
-
-
-
-
-
-## Methodology
-
-
-
-
-
-
-
-
-
 # Electricity Demand Forecasting with Machine Learning and Time-Series Analysis Methods
 
 ## Introduction
