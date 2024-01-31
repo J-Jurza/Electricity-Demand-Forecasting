@@ -1,8 +1,32 @@
+# Electricity Demand Forecasting
+
+## Introduction
+
+
+
+
+
+## Methodology
+
+
+
+
+
+
+
+
+
 # Electricity Demand Forecasting with Machine Learning and Time-Series Analysis Methods
 
 ## Introduction
 
 Every day, electricity is consumed by individuals, households, and businesses around the world for a myriad of uses such as lighting, powering computers and machinery, heating, and cooling. More recently, electricity has also been crucial in refueling electric cars, supporting eco-friendlier commuting. However, alongside the vast consumption of electricity come significant challenges, particularly in accurately forecasting demand. Inaccurate forecasts can lead to excessive use of non-renewable energy sources and environmental harm or, conversely, underestimation can necessitate costly load shedding, potentially causing blackouts and outages. This report explores the application of machine learning models to accurately forecast electricity demand 30 minutes into the future, with the aim of mitigating these issues.
+
+This project undertakes the challenge of forecasting electricity demand in Queensland (QLD), Australia, with an emphasis on precision and reliability. Accurate demand forecasting is pivotal for infrastructure planning, market operations, and policy formulation. By analyzing energy consumption trends and employing advanced machine learning models, this project seeks to mitigate the risks associated with demand prediction inaccuracies, such as unnecessary energy production and the resultant environmental impacts.
+
+## Background and Significance
+
+Given Australia's growing energy demand (and changes in its patterns), this research leverages historical data and predictive modeling to forecast future requirements. The evolving landscape of energy generation, marked by a significant shift towards renewable sources, necessitates accurate forecasting models to balance supply and demand effectively. This project aims to contribute to the energy sector's decision-making processes, ensuring sustainable and efficient energy management.
 
 ## Project Status
 
@@ -10,21 +34,22 @@ This project is a group capstone project for a UNSW Master of Data Science degre
 
 ## Methodology
 
-### Data Collection
+### Software and Tools
 
-Data has been collected from the four Australian states of NSW, QLD, VIC, and SA, encompassing half-hourly forecast electricity demand for the years 2016 to 2020, temperature data from 2010 to 2020, and total electricity demand data from the same period.
+The analysis was conducted using Python and R programming languages. Python analyses were carried out in Jupyter Notebooks, leveraging Google Colab for its collaborative features and GPU support. Key Python libraries utilized included Pandas, NumPy, Seaborn, Matplotlib, Scikit-Learn, Keras, TensorFlow, XGBoost, Statsmodels, and Hyperopt, covering a range of tasks from data cleaning to machine learning. R and RStudio facilitated EDA visualizations and report writing, employing packages like tidyverse and kableExtra. GitHub and Google Drive served as platforms for code repository and collaboration, respectively.
 
-### Data Preparation
+### Data Description and Preprocessing
 
-The dataset undergoes a thorough process of importation, cleaning, exploratory data analysis (EDA), and feature engineering/scaling to prepare it for machine learning applications.
+The data consisted of 12 CSV files related to NSW, QLD, SA, and VIC, detailing forecast demand, temperature, and total demand. Preprocessing involved importing and merging these files into comprehensive DataFrames, standardising formats, and addressing inconsistencies. Efforts were made to ensure data integrity, such as correcting the DATETIME format and managing missing values through methods like linear interpolation or removal of biased data segments.
 
-### Model Development
+### Data Cleaning and Assumptions
 
-We explore several machine learning models including LSTM, ARIMA, Random Forest, and XGBoost. Each model is initially trained with a set of baseline hyperparameters across 10 training runs to record the mean and 95% confidence interval for the RMSE accuracy metric. Hyperparameter tuning follows to enhance model performance.
+Missing data were meticulously handled, with strategies tailored to preserve the dataset's accuracy without introducing bias. Assumptions included consistent DATETIME formatting and the relevance of temperature observation locations to their respective states. The analysis focused on data from 2016 onwards, considering the evolving nature of energy consumption patterns.
 
-### Model Evaluation
+### Modelling Methods
 
-Models are evaluated based on their RMSE accuracy on both training and testing sets. The lowest RMSE on the test set determines the best-performing model.
+Predictive models developed included Random Forest, XGBoost, and LSTM, chosen for their suitability in handling time-series data. The analysis was confined to QLD due to time constraints, employing 3-Fold Nested CV for model training, validation, and testing. Performance metrics such as MAE, MSE, RMSE, MAPE, and R-Squared facilitated comprehensive model comparison and evaluation against forecasts from the National Energy Market (NEM).
+
 
 ## Dependencies
 
@@ -87,10 +112,6 @@ electricity-demand-forecasting/
 │
 └── README.md                       # Project documentation
 ```
-
-## Contributing
-
-Contributions to improve the project are welcome. Feel free to open an issue or submit a pull request.
 
 
 ## Acknowledgements
